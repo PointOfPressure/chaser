@@ -1,0 +1,17 @@
+[package]
+name = "chaser-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Headless CLI for Chaser: manage Sober profiles and FastFlags from the terminal"
+
+[[bin]]
+name = "chaser"
+path = "src/main.rs"
+
+[dependencies]
+chaser-core.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true

@@ -114,7 +114,9 @@ fn cmd_profiles() -> Result<()> {
 }
 
 fn cmd_show(rest: &[String]) -> Result<()> {
-    let slug = rest.first().ok_or_else(|| anyhow!("usage: chaser show <slug>"))?;
+    let slug = rest
+        .first()
+        .ok_or_else(|| anyhow!("usage: chaser show <slug>"))?;
     let store = Store::open()?;
     let p = store.load(slug)?;
     println!("{}", serde_json::to_string_pretty(&p)?);

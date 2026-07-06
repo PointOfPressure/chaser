@@ -122,14 +122,14 @@ pub fn catalog() -> Vec<FFlagDef> {
         },
         FFlagDef {
             name: "FLogNetwork",
-            kind: FFlagKind::String,
+            kind: FFlagKind::Int,
             category: "Debug",
             risk: Risk::Risky,
             description:
-                "Network log verbosity. Diagnostic only; leave alone unless you're chasing a \
-                 connection bug.",
-            suggested: json!("7"),
-            range: None,
+                "Network log verbosity (0-7). Diagnostic only; leave alone unless you're chasing \
+                 a connection bug.",
+            suggested: json!(7),
+            range: Some((0, 7)),
         },
     ]
 }

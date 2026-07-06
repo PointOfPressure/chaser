@@ -80,7 +80,10 @@ impl SoberInstall {
 
 /// Parse `flatpak info` output for the `Version:` field.
 fn detect_version() -> Option<String> {
-    let out = Command::new("flatpak").args(["info", APP_ID]).output().ok()?;
+    let out = Command::new("flatpak")
+        .args(["info", APP_ID])
+        .output()
+        .ok()?;
     if !out.status.success() {
         return None;
     }
@@ -360,14 +363,42 @@ fn to_pretty_4space(value: &Value) -> Result<String> {
     Ok(String::from_utf8(buf)?)
 }
 
-/// Copy the existing config into Chaser's timestamped backup directory.
+/// How many timestamped config backups to keep around.
+const MAX_BACKUPS: usize = 20;
+
+/// Copy the existing config into Chaser's timestamped backup directory,
+/// then prune old backups so the directory doesn't grow forever.
 fn backup_config(path: &Path) -> Result<PathBuf> {
     let dir = paths::backup_dir()?;
     let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
     let dest = dir.join(format!("config-{stamp}.json"));
     std::fs::copy(path, &dest)
         .with_context(|| format!("copying {} to {}", path.display(), dest.display()))?;
+    prune_backups(&dir, MAX_BACKUPS)?;
     Ok(dest)
+}
+
+/// Delete the oldest `config-*.json` backups beyond `keep`. The fixed-width
+/// timestamp in the filename makes lexical order chronological.
+fn prune_backups(dir: &Path, keep: usize) -> Result<()> {
+    let mut backups: Vec<PathBuf> = std::fs::read_dir(dir)?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.starts_with("config-") && n.ends_with(".json"))
+                .unwrap_or(false)
+        })
+        .collect();
+    if backups.len() <= keep {
+        return Ok(());
+    }
+    backups.sort(); // lexical == chronological for our fixed-width stamps
+    let excess = backups.len() - keep;
+    for old in backups.into_iter().take(excess) {
+        let _ = std::fs::remove_file(old);
+    }
+    Ok(())
 }
 
 fn kind_name(v: &Value) -> &'static str {
@@ -409,7 +440,10 @@ mod tests {
         assert_eq!(cfg.get_str("touch_mode"), Some("fake_off"));
         // Order preserved: first key stays first.
         let keys: Vec<&String> = cfg.raw().keys().collect();
-        assert_eq!(keys.first().map(|s| s.as_str()), Some("allow_gamepad_permission"));
+        assert_eq!(
+            keys.first().map(|s| s.as_str()),
+            Some("allow_gamepad_permission")
+        );
     }
 
     #[test]
@@ -419,7 +453,10 @@ mod tests {
         assert!(text.starts_with("// !!! STOP !!!"));
         // Re-parsing the output yields the same known values.
         let again = SoberConfig::parse(&text).unwrap();
-        assert_eq!(again.get_str("graphics_optimization_mode"), Some("balanced"));
+        assert_eq!(
+            again.get_str("graphics_optimization_mode"),
+            Some("balanced")
+        );
         assert_eq!(again.get_bool("enable_mobile_home_screen"), Some(false));
     }
 
@@ -438,13 +475,17 @@ mod tests {
         let mut p = Profile::new("Test");
         p.graphics_mode = Some(GraphicsMode::Performance);
         p.renderer = Some(Renderer::Vulkan);
-        p.fflags.insert("DFIntTaskSchedulerTargetFps".into(), json!(240));
+        p.fflags
+            .insert("DFIntTaskSchedulerTargetFps".into(), json!(240));
 
         cfg.apply_profile(&p);
 
-        assert_eq!(cfg.get_str("graphics_optimization_mode"), Some("performance"));
+        assert_eq!(
+            cfg.get_str("graphics_optimization_mode"),
+            Some("performance")
+        );
         assert_eq!(cfg.get_bool("use_opengl"), Some(false)); // Vulkan
-        // Untouched key preserved.
+                                                             // Untouched key preserved.
         assert_eq!(cfg.get_str("touch_mode"), Some("fake_off"));
         // fflags replaced by the profile's set.
         let flags = cfg.fflags();
@@ -453,10 +494,40 @@ mod tests {
     }
 
     #[test]
+    fn prune_keeps_newest_backups() {
+        let dir = std::env::temp_dir().join("chaser-prune-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for i in 0..25 {
+            std::fs::write(dir.join(format!("config-20260101-0000{i:02}.json")), "{}").unwrap();
+        }
+        // A non-backup file must never be touched.
+        std::fs::write(dir.join("unrelated.txt"), "keep me").unwrap();
+
+        prune_backups(&dir, 20).unwrap();
+
+        let remaining: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok().and_then(|e| e.file_name().into_string().ok()))
+            .collect();
+        let backups: Vec<&String> = remaining
+            .iter()
+            .filter(|n| n.starts_with("config-"))
+            .collect();
+        assert_eq!(backups.len(), 20);
+        // The oldest five are gone, the newest survive.
+        assert!(!remaining.contains(&"config-20260101-000000.json".to_string()));
+        assert!(!remaining.contains(&"config-20260101-000004.json".to_string()));
+        assert!(remaining.contains(&"config-20260101-000024.json".to_string()));
+        assert!(remaining.contains(&"unrelated.txt".to_string()));
+    }
+
+    #[test]
     fn launch_builds_flatpak_argv() {
         let mut p = Profile::new("Perf");
         p.mangohud = true;
-        p.env.insert("__GL_THREADED_OPTIMIZATIONS".into(), "1".into());
+        p.env
+            .insert("__GL_THREADED_OPTIMIZATIONS".into(), "1".into());
         let spec = build_launch(&p, Some("roblox://experiences/start?placeId=1"));
         assert_eq!(spec.program, "flatpak");
         assert_eq!(spec.args[0], "run");
@@ -465,7 +536,10 @@ mod tests {
             .args
             .iter()
             .any(|a| a == "--env=__GL_THREADED_OPTIMIZATIONS=1"));
-        assert_eq!(spec.args.last().unwrap(), "roblox://experiences/start?placeId=1");
+        assert_eq!(
+            spec.args.last().unwrap(),
+            "roblox://experiences/start?placeId=1"
+        );
         // App id present before the URI.
         let app_pos = spec.args.iter().position(|a| a == APP_ID).unwrap();
         let uri_pos = spec.args.len() - 1;

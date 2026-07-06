@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Chaser
+Comment=Launcher and manager for Sober (Roblox on Linux)
+Exec=chaser-gui
+Icon=applications-games
+Type=Application
+Categories=Game;Settings;
+Keywords=roblox;sober;launcher;fastflags;
+Terminal=false

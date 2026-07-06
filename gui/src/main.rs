@@ -66,7 +66,10 @@ fn build_ui(app: &adw::Application) {
     let toasts = adw::ToastOverlay::new();
     let toolbar = adw::ToolbarView::new();
     let header = adw::HeaderBar::new();
-    header.set_title_widget(Some(&adw::WindowTitle::new("Chaser", "Roblox on Linux via Sober")));
+    header.set_title_widget(Some(&adw::WindowTitle::new(
+        "Chaser",
+        "Roblox on Linux via Sober",
+    )));
     toolbar.add_top_bar(&header);
 
     let stack = gtk::Stack::new();
@@ -220,7 +223,9 @@ fn build_profiles_page(ui: &Rc<Ui>) -> gtk::Widget {
 
     let group = adw::PreferencesGroup::new();
     group.set_title("Editing the active profile");
-    group.set_description(Some("Changes save instantly and apply the next time you launch."));
+    group.set_description(Some(
+        "Changes save instantly and apply the next time you launch.",
+    ));
 
     ui.name_row.set_title("Name");
     ui.name_row.set_show_apply_button(true);
@@ -228,14 +233,22 @@ fn build_profiles_page(ui: &Rc<Ui>) -> gtk::Widget {
     ui.desc_row.set_show_apply_button(true);
 
     ui.graphics_combo.set_title("Graphics mode");
-    ui.graphics_combo
-        .set_model(Some(&gtk::StringList::new(&["Leave as-is", "Quality", "Balanced", "Performance"])));
+    ui.graphics_combo.set_model(Some(&gtk::StringList::new(&[
+        "Leave as-is",
+        "Quality",
+        "Balanced",
+        "Performance",
+    ])));
     ui.renderer_combo.set_title("Renderer");
-    ui.renderer_combo
-        .set_model(Some(&gtk::StringList::new(&["Leave as-is", "Vulkan", "OpenGL"])));
+    ui.renderer_combo.set_model(Some(&gtk::StringList::new(&[
+        "Leave as-is",
+        "Vulkan",
+        "OpenGL",
+    ])));
 
     ui.gamemode_sw.set_title("Feral GameMode");
-    ui.gamemode_sw.set_subtitle("Sober's built-in CPU governor boost");
+    ui.gamemode_sw
+        .set_subtitle("Sober's built-in CPU governor boost");
     ui.rpc_sw.set_title("Discord Rich Presence");
     ui.hidpi_sw.set_title("HiDPI scaling");
     ui.gamepad_sw.set_title("Gamepad support");
@@ -253,7 +266,9 @@ fn build_profiles_page(ui: &Rc<Ui>) -> gtk::Widget {
     // --- wiring ---
     {
         let ui = ui.clone();
-        ui.name_row.clone().connect_apply(move |e| ui.rename_current(&e.text()));
+        ui.name_row
+            .clone()
+            .connect_apply(move |e| ui.rename_current(&e.text()));
     }
     {
         let ui = ui.clone();
@@ -263,15 +278,15 @@ fn build_profiles_page(ui: &Rc<Ui>) -> gtk::Widget {
     }
     {
         let ui = ui.clone();
-        ui.graphics_combo
-            .clone()
-            .connect_selected_notify(move |c| ui.mutate(|p| p.graphics_mode = index_to_graphics(c.selected())));
+        ui.graphics_combo.clone().connect_selected_notify(move |c| {
+            ui.mutate(|p| p.graphics_mode = index_to_graphics(c.selected()))
+        });
     }
     {
         let ui = ui.clone();
-        ui.renderer_combo
-            .clone()
-            .connect_selected_notify(move |c| ui.mutate(|p| p.renderer = index_to_renderer(c.selected())));
+        ui.renderer_combo.clone().connect_selected_notify(move |c| {
+            ui.mutate(|p| p.renderer = index_to_renderer(c.selected()))
+        });
     }
     connect_switch(ui, &ui.gamemode_sw, |p, v| p.enable_gamemode = Some(v));
     connect_switch(ui, &ui.rpc_sw, |p, v| p.discord_rpc = Some(v));
@@ -311,7 +326,12 @@ fn build_fflags_page(ui: &Rc<Ui>) -> gtk::Widget {
     for def in fflags::catalog() {
         let row = adw::ActionRow::new();
         row.set_title(def.name);
-        row.set_subtitle(&format!("[{} · {}] {}", def.category, def.risk.label(), def.description));
+        row.set_subtitle(&format!(
+            "[{} · {}] {}",
+            def.category,
+            def.risk.label(),
+            def.description
+        ));
         row.set_subtitle_lines(3);
         let add = gtk::Button::with_label("Add");
         add.set_valign(gtk::Align::Center);
@@ -357,9 +377,15 @@ fn build_performance_page(ui: &Rc<Ui>) -> gtk::Widget {
 
     let presets = adw::PreferencesGroup::new();
     presets.set_title("Quick presets");
-    presets.set_description(Some("Switch the active profile to a preset and write it to Sober."));
+    presets.set_description(Some(
+        "Switch the active profile to a preset and write it to Sober.",
+    ));
     for (slug, label, sub) in [
-        ("competitive-fps", "Competitive FPS", "Max frames, minimal effects"),
+        (
+            "competitive-fps",
+            "Competitive FPS",
+            "Max frames, minimal effects",
+        ),
         ("balanced", "Balanced", "Sensible defaults, uncapped FPS"),
         ("cinematic", "Cinematic", "Highest fidelity"),
         ("potato", "Potato", "Rescue mode for weak GPUs"),
@@ -389,7 +415,9 @@ fn build_performance_page(ui: &Rc<Ui>) -> gtk::Widget {
 
     let env_group = adw::PreferencesGroup::new();
     env_group.set_title("Environment variables");
-    env_group.set_description(Some("One KEY=VALUE per line, passed via `flatpak run --env=`."));
+    env_group.set_description(Some(
+        "One KEY=VALUE per line, passed via `flatpak run --env=`.",
+    ));
     ui.env_view.set_monospace(true);
     ui.env_view.set_top_margin(6);
     ui.env_view.set_left_margin(6);
@@ -483,7 +511,9 @@ impl Ui {
 
         self.loading.set(true);
         self.play_model.splice(0, self.play_model.n_items(), &names);
-        let active = Store::open().ok().and_then(|s| s.active_slug().ok().flatten());
+        let active = Store::open()
+            .ok()
+            .and_then(|s| s.active_slug().ok().flatten());
         if let Some(active) = active {
             if let Some(idx) = self.slugs.borrow().iter().position(|s| *s == active) {
                 self.play_combo.set_selected(idx as u32);
@@ -504,14 +534,21 @@ impl Ui {
 
         self.name_row.set_text(&profile.name);
         self.desc_row.set_text(&profile.description);
-        self.graphics_combo.set_selected(graphics_to_index(profile.graphics_mode));
-        self.renderer_combo.set_selected(renderer_to_index(profile.renderer));
-        self.gamemode_sw.set_active(profile.enable_gamemode.unwrap_or(false));
+        self.graphics_combo
+            .set_selected(graphics_to_index(profile.graphics_mode));
+        self.renderer_combo
+            .set_selected(renderer_to_index(profile.renderer));
+        self.gamemode_sw
+            .set_active(profile.enable_gamemode.unwrap_or(false));
         self.rpc_sw.set_active(profile.discord_rpc.unwrap_or(false));
-        self.hidpi_sw.set_active(profile.enable_hidpi.unwrap_or(false));
-        self.gamepad_sw.set_active(profile.allow_gamepad.unwrap_or(false));
+        self.hidpi_sw
+            .set_active(profile.enable_hidpi.unwrap_or(false));
+        self.gamepad_sw
+            .set_active(profile.allow_gamepad.unwrap_or(false));
         self.mangohud_sw.set_active(profile.mangohud);
-        self.fflags_view.buffer().set_text(&fflags_to_pretty(&profile.fflags));
+        self.fflags_view
+            .buffer()
+            .set_text(&fflags_to_pretty(&profile.fflags));
         self.env_view.buffer().set_text(&env_to_text(&profile.env));
         self.play_summary.set_subtitle(&describe(&profile));
 
@@ -541,25 +578,31 @@ impl Ui {
     }
 
     fn rename_current(&self, new_name: &str) {
-        if self.loading.get() || new_name.trim().is_empty() {
+        if self.loading.get() {
             return;
         }
         let old_slug = self.current_slug.borrow().clone();
-        let mut p = self.current.borrow().clone();
-        p.name = new_name.trim().to_string();
-        let new_slug = p.slug();
-        if let Ok(store) = Store::open() {
-            let _ = store.save(&p);
-            if new_slug != old_slug {
-                let _ = store.delete(&old_slug);
-                let _ = store.set_active(&new_slug);
+        let store = match Store::open() {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        // First persist any unsaved field state, then rename via the store,
+        // which refuses to clobber a different existing profile.
+        let _ = store.save(&self.current.borrow());
+        match store.rename(&old_slug, new_name) {
+            Ok(p) => {
+                *self.current_slug.borrow_mut() = p.slug();
+                *self.current.borrow_mut() = p;
+                self.refresh_profiles();
+                self.load_active();
+                self.toast("Renamed");
+            }
+            Err(e) => {
+                // Restore the entry to the real name so the UI doesn't lie.
+                self.load_active();
+                self.toast(&format!("Rename failed: {e}"));
             }
         }
-        *self.current.borrow_mut() = p;
-        *self.current_slug.borrow_mut() = new_slug;
-        self.refresh_profiles();
-        self.load_active();
-        self.toast("Renamed");
     }
 
     fn new_profile(&self) {
@@ -713,7 +756,10 @@ fn describe(p: &Profile) -> String {
 
 fn sober_status_text() -> String {
     match SoberInstall::detect() {
-        Ok(s) => format!("Installed · version {}", s.version.as_deref().unwrap_or("unknown")),
+        Ok(s) => format!(
+            "Installed · version {}",
+            s.version.as_deref().unwrap_or("unknown")
+        ),
         Err(_) => "Not installed — run: flatpak install flathub org.vinegarhq.Sober".to_string(),
     }
 }
@@ -768,7 +814,10 @@ fn parse_fflags(text: &str) -> anyhow::Result<Map<String, Value>> {
 }
 
 fn env_to_text(env: &BTreeMap<String, String>) -> String {
-    env.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("\n")
+    env.iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn parse_env(text: &str) -> anyhow::Result<BTreeMap<String, String>> {
@@ -788,7 +837,8 @@ fn parse_env(text: &str) -> anyhow::Result<BTreeMap<String, String>> {
 
 fn buffer_text(view: &gtk::TextView) -> String {
     let buf = view.buffer();
-    buf.text(&buf.start_iter(), &buf.end_iter(), false).to_string()
+    buf.text(&buf.start_iter(), &buf.end_iter(), false)
+        .to_string()
 }
 
 /// A profile name whose slug doesn't collide with an existing profile.
@@ -820,7 +870,12 @@ fn restore_latest_backup() -> anyhow::Result<Option<String>> {
     match newest {
         Some((_, path)) => {
             std::fs::copy(&path, SoberInstall::config_path())?;
-            Ok(Some(path.file_name().unwrap_or_default().to_string_lossy().to_string()))
+            Ok(Some(
+                path.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+            ))
         }
         None => Ok(None),
     }

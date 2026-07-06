@@ -50,7 +50,7 @@ pub fn sessions(log_dir: &Path) -> Result<Vec<Session>> {
             size_bytes: meta.len(),
         });
     }
-    out.sort_by(|a, b| b.started.cmp(&a.started));
+    out.sort_by_key(|s| std::cmp::Reverse(s.started));
     Ok(out)
 }
 

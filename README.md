@@ -1,5 +1,7 @@
 # Chaser
 
+[![CI](https://github.com/PointOfPressure/chaser/actions/workflows/ci.yml/badge.svg)](https://github.com/PointOfPressure/chaser/actions/workflows/ci.yml)
+
 **A native GTK4 launcher and manager for [Sober](https://sober.vinegarhq.org/) — the way to play Roblox on Linux.**
 
 Sober is a great *engine*: it runs the x86-64 Android build of Roblox natively on Linux, sidestepping the Hyperion anti-cheat that killed the Wine path, and it's genuinely fast. But by design it's a **minimal runtime** — VinegarHQ deliberately leaves the launcher/config layer to the community. On Windows, players have Bloxstrap; on Linux there hasn't been an equally polished equivalent.
@@ -16,7 +18,7 @@ Chaser is that cockpit. It doesn't replace Sober's runtime (that's a closed, ant
 - **Built-in presets** — *Competitive FPS*, *Balanced*, *Cinematic*, and *Potato* (rescue mode for weak GPUs), ready to go.
 - **Curated FastFlag catalog** — real, risk-tagged engine flags with plain-English descriptions, plus a raw JSON editor for power users.
 - **Performance page** — apply a preset and write it to Sober in one click; toggle MangoHud; set custom environment variables.
-- **Safe by construction** — Chaser parses Sober's JSONC `config.json`, **preserves its comment header and every key it doesn't manage**, writes atomically, and **backs up the previous config before every change** (under `~/.config/chaser/backups`).
+- **Safe by construction** — Chaser parses Sober's JSONC `config.json`, **preserves its comment header and every key it doesn't manage**, writes atomically, and **backs up the previous config before every change** (under `~/.config/chaser/backups`, keeping the newest 20).
 - **Native & snappy** — GTK4 + libadwaita, no Electron, no web view, animations off.
 - **Headless CLI** — everything the GUI does, scriptable from the terminal via `chaser`.
 
@@ -29,15 +31,15 @@ Chaser is that cockpit. It doesn't replace Sober's runtime (that's a closed, ant
 ## Requirements
 
 - **[Sober](https://flathub.org/apps/org.vinegarhq.Sober)** installed via Flatpak: `flatpak install flathub org.vinegarhq.Sober`
-- **GTK4 ≥ 4.14** and **libadwaita ≥ 1.4** (present on any modern GNOME-based distro)
+- **GTK4 ≥ 4.14** and **libadwaita ≥ 1.5** (Ubuntu 24.04 / Fedora 40 / anything newer)
 - **Rust** (to build from source)
 
-## Build
+## Build & install
 
 ```sh
-git clone <repo-url> chaser
+git clone https://github.com/PointOfPressure/chaser.git
 cd chaser
-# runtime deps on Debian/Ubuntu/Zorin:
+# build deps on Debian/Ubuntu/Zorin:
 sudo apt install libgtk-4-dev libadwaita-1-dev
 cargo build --release
 ```
@@ -47,7 +49,15 @@ Binaries land in `target/release/`:
 - `chaser-gui` — the graphical launcher
 - `chaser` — the CLI
 
-Run the GUI with `./target/release/chaser-gui`.
+Run in place with `./target/release/chaser-gui`, or install properly:
+
+```sh
+sudo install -Dm755 target/release/chaser-gui /usr/local/bin/chaser-gui
+sudo install -Dm755 target/release/chaser /usr/local/bin/chaser
+install -Dm644 data/chaser.desktop ~/.local/share/applications/chaser.desktop
+```
+
+Chaser then shows up in your app menu like any other application.
 
 ## CLI usage
 

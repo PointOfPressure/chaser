@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["Chaser contributors"]
-repository = "https://github.com/CHANGEME/chaser"
+repository = "https://github.com/PointOfPressure/chaser"
 description = "A native GTK4 launcher and manager for Sober (Roblox on Linux)"
 
 [workspace.dependencies]

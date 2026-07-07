@@ -27,7 +27,11 @@
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/PointOfPressure/chaser/main/docs/play.png</image>
-      <caption>Play page: Sober status, active profile, one-click launch</caption>
+      <caption>Home: one-button launch that always applies your active profile</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/PointOfPressure/chaser/main/docs/onboarding.png</image>
+      <caption>First-run onboarding: Sober check and starting preset</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/PointOfPressure/chaser/main/docs/fflags.png</image>
@@ -36,6 +40,11 @@
   </screenshots>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.1" date="2026-07-07">
+      <description>
+        <p>Bloxstrap-style home screen with a single Launch Roblox button that always applies the active profile, plus first-run onboarding with Sober detection and preset picker.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-07-07"/>
   </releases>
 </component>

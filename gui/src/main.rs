@@ -30,6 +30,7 @@ struct Ui {
     play_combo: adw::ComboRow,
     play_model: gtk::StringList,
     play_summary: adw::ActionRow,
+    play_caption: gtk::Label,
     // Shared working state
     slugs: RefCell<Vec<String>>,
     current: RefCell<Profile>,
@@ -52,8 +53,20 @@ struct Ui {
 }
 
 fn build_ui(app: &adw::Application) {
+    // First run = no saved state yet; decide before ensure_defaults creates it.
+    let first_run = paths::state_path().map(|p| !p.exists()).unwrap_or(false);
     if let Ok(store) = Store::open() {
         let _ = store.ensure_defaults();
+    }
+
+    let css = gtk::CssProvider::new();
+    css.load_from_string(".launch-hero { font-size: 130%; padding: 14px 44px; }");
+    if let Some(display) = gtk::gdk::Display::default() {
+        gtk::style_context_add_provider_for_display(
+            &display,
+            &css,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
     }
 
     let window = adw::ApplicationWindow::builder()
@@ -92,6 +105,7 @@ fn build_ui(app: &adw::Application) {
         play_combo: adw::ComboRow::new(),
         play_model: gtk::StringList::new(&[]),
         play_summary: adw::ActionRow::new(),
+        play_caption: gtk::Label::new(None),
         slugs: RefCell::new(Vec::new()),
         current: RefCell::new(Profile::new("Balanced")),
         current_slug: RefCell::new(String::new()),
@@ -128,7 +142,36 @@ fn build_ui(app: &adw::Application) {
     ui.refresh_profiles();
     ui.load_active();
     window.present();
+
+    // Bloxstrap-style onboarding on first run (CHASER_ONBOARD=1 forces it for QA).
+    if first_run || std::env::var("CHASER_ONBOARD").is_ok() {
+        show_onboarding(&window, &ui);
+    }
 }
+
+/// The four built-in presets, shared by onboarding and the Performance page.
+const PRESETS: [(&str, &str, &str); 4] = [
+    (
+        "competitive-fps",
+        "Competitive FPS",
+        "Max frames, minimum eye-candy — uncapped FPS, low quality, no MSAA",
+    ),
+    (
+        "balanced",
+        "Balanced",
+        "Sensible defaults with an uncapped framerate — a good starting point",
+    ),
+    (
+        "cinematic",
+        "Cinematic",
+        "Highest fidelity — quality mode, full effects",
+    ),
+    (
+        "potato",
+        "Potato",
+        "Rescue mode for weak GPUs — voxel lighting, lowest textures, no shadows",
+    ),
+];
 
 // ---------------------------------------------------------------------------
 // Pages
@@ -137,21 +180,56 @@ fn build_ui(app: &adw::Application) {
 fn build_play_page(ui: &Rc<Ui>) -> gtk::Widget {
     let page = vbox();
 
-    let sober_group = adw::PreferencesGroup::new();
-    sober_group.set_title("Sober");
-    let status_row = adw::ActionRow::new();
-    status_row.set_title("Status");
-    status_row.set_subtitle(&sober_status_text());
-    sober_group.add(&status_row);
-    let path_row = adw::ActionRow::new();
-    path_row.set_title("Config");
-    path_row.set_subtitle(&SoberInstall::config_path().display().to_string());
-    sober_group.add(&path_row);
-    page.append(&sober_group);
+    // Only revealed when Sober is missing.
+    let banner = adw::Banner::new("Sober is not installed — Chaser needs it to launch Roblox");
+    banner.set_button_label(Some("Copy install command"));
+    banner.set_revealed(!SoberInstall::is_installed());
+    {
+        let ui = ui.clone();
+        banner.connect_button_clicked(move |_| {
+            if let Some(display) = gtk::gdk::Display::default() {
+                display
+                    .clipboard()
+                    .set_text("flatpak install flathub org.vinegarhq.Sober");
+                ui.toast("Copied — run it in a terminal, then restart Chaser");
+            }
+        });
+    }
+    page.append(&banner);
+
+    // Hero: icon + one unambiguous launch button, Bloxstrap-style.
+    let hero = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    hero.set_valign(gtk::Align::Center);
+    hero.set_vexpand(true);
+    hero.set_margin_top(12);
+    hero.set_margin_bottom(12);
+
+    if let Some(texture) = app_icon_texture() {
+        let icon = gtk::Image::from_paintable(Some(&texture));
+        icon.set_pixel_size(112);
+        hero.append(&icon);
+    }
+
+    let launch_btn = gtk::Button::new();
+    let content = adw::ButtonContent::new();
+    content.set_icon_name("media-playback-start-symbolic");
+    content.set_label("Launch Roblox");
+    launch_btn.set_child(Some(&content));
+    launch_btn.add_css_class("suggested-action");
+    launch_btn.add_css_class("pill");
+    launch_btn.add_css_class("launch-hero");
+    launch_btn.set_halign(gtk::Align::Center);
+    hero.append(&launch_btn);
+
+    ui.play_caption.add_css_class("dim-label");
+    ui.play_caption.set_halign(gtk::Align::Center);
+    hero.append(&ui.play_caption);
+
+    page.append(&hero);
 
     let prof_group = adw::PreferencesGroup::new();
-    prof_group.set_title("Active profile");
-    ui.play_combo.set_title("Profile");
+    prof_group.set_title("Profile");
+    ui.play_combo.set_title("Active profile");
     ui.play_combo.set_model(Some(&ui.play_model));
     ui.play_summary.set_title("Summary");
     prof_group.add(&ui.play_combo);
@@ -176,32 +254,142 @@ fn build_play_page(ui: &Rc<Ui>) -> gtk::Widget {
         });
     }
 
-    let btns = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let launch_btn = gtk::Button::with_label("Apply & Launch");
-    launch_btn.add_css_class("suggested-action");
-    launch_btn.add_css_class("pill");
-    let apply_btn = gtk::Button::with_label("Apply only");
-    apply_btn.add_css_class("pill");
-    btns.append(&launch_btn);
-    btns.append(&apply_btn);
-    page.append(&btns);
-
     {
         let ui = ui.clone();
         launch_btn.connect_clicked(move |_| match ui.apply_current_to_sober(true) {
-            Ok(name) => ui.toast(&format!("Applied '{name}' and launched Sober")),
-            Err(e) => ui.toast(&format!("Error: {e}")),
-        });
-    }
-    {
-        let ui = ui.clone();
-        apply_btn.connect_clicked(move |_| match ui.apply_current_to_sober(false) {
-            Ok(name) => ui.toast(&format!("Applied '{name}'. Restart Sober to see changes.")),
+            Ok(name) => ui.toast(&format!("Applied '{name}' — launching Roblox")),
             Err(e) => ui.toast(&format!("Error: {e}")),
         });
     }
 
+    let status = gtk::Label::new(Some(&format!(
+        "{} · {}",
+        sober_status_text(),
+        SoberInstall::config_path().display()
+    )));
+    status.add_css_class("dim-label");
+    status.add_css_class("caption");
+    status.set_wrap(true);
+    status.set_halign(gtk::Align::Center);
+    page.append(&status);
+
     scrolled(&page)
+}
+
+/// The bundled app icon as a paintable (works even when not installed system-wide).
+fn app_icon_texture() -> Option<gtk::gdk::Texture> {
+    let bytes = glib::Bytes::from_static(include_bytes!("../../data/icons/org.chaser.Chaser.svg"));
+    gtk::gdk::Texture::from_bytes(&bytes).ok()
+}
+
+/// First-run welcome: check Sober, pick a starting preset, apply it right away.
+fn show_onboarding(parent: &adw::ApplicationWindow, ui: &Rc<Ui>) {
+    let dialog = adw::Window::builder()
+        .transient_for(parent)
+        .modal(true)
+        .default_width(540)
+        .default_height(640)
+        .title("Welcome to Chaser")
+        .build();
+
+    let toolbar = adw::ToolbarView::new();
+    toolbar.add_top_bar(&adw::HeaderBar::new());
+
+    let content = vbox();
+
+    let hero = gtk::Box::new(gtk::Orientation::Vertical, 8);
+    if let Some(texture) = app_icon_texture() {
+        let icon = gtk::Image::from_paintable(Some(&texture));
+        icon.set_pixel_size(96);
+        hero.append(&icon);
+    }
+    let title = gtk::Label::new(Some("Welcome to Chaser"));
+    title.add_css_class("title-1");
+    hero.append(&title);
+    let blurb = gtk::Label::new(Some(
+        "The Bloxstrap of Linux — profiles, FastFlags and performance presets for Sober.",
+    ));
+    blurb.add_css_class("dim-label");
+    blurb.set_wrap(true);
+    blurb.set_justify(gtk::Justification::Center);
+    hero.append(&blurb);
+    content.append(&hero);
+
+    let check = adw::PreferencesGroup::new();
+    let sober_row = adw::ActionRow::new();
+    sober_row.set_title("Sober");
+    sober_row.set_subtitle(&sober_status_text());
+    let installed = SoberInstall::is_installed();
+    sober_row.add_prefix(&gtk::Image::from_icon_name(if installed {
+        "emblem-ok-symbolic"
+    } else {
+        "dialog-warning-symbolic"
+    }));
+    check.add(&sober_row);
+    content.append(&check);
+
+    let choose = adw::PreferencesGroup::new();
+    choose.set_title("Pick your starting profile");
+    choose.set_description(Some("You can switch or customize it anytime."));
+    let selected = Rc::new(RefCell::new("balanced".to_string()));
+    let mut group_leader: Option<gtk::CheckButton> = None;
+    for (slug, label, desc) in PRESETS {
+        let row = adw::ActionRow::new();
+        row.set_title(label);
+        row.set_subtitle(desc);
+        let radio = gtk::CheckButton::new();
+        radio.set_valign(gtk::Align::Center);
+        match &group_leader {
+            Some(leader) => radio.set_group(Some(leader)),
+            None => group_leader = Some(radio.clone()),
+        }
+        if slug == "balanced" {
+            radio.set_active(true);
+        }
+        {
+            let selected = selected.clone();
+            radio.connect_toggled(move |r| {
+                if r.is_active() {
+                    *selected.borrow_mut() = slug.to_string();
+                }
+            });
+        }
+        row.add_prefix(&radio);
+        row.set_activatable_widget(Some(&radio));
+        choose.add(&row);
+    }
+    content.append(&choose);
+
+    // Pinned bottom bar so the button is always visible regardless of scroll.
+    let go = gtk::Button::with_label("Get started");
+    go.add_css_class("suggested-action");
+    go.add_css_class("pill");
+    go.add_css_class("launch-hero");
+    go.set_halign(gtk::Align::Center);
+    go.set_margin_top(10);
+    go.set_margin_bottom(14);
+    toolbar.add_bottom_bar(&go);
+    {
+        let ui = ui.clone();
+        let dialog = dialog.clone();
+        go.connect_clicked(move |_| {
+            let slug = selected.borrow().clone();
+            if let Ok(store) = Store::open() {
+                let _ = store.set_active(&slug);
+            }
+            ui.refresh_profiles();
+            ui.load_active();
+            match ui.apply_current_to_sober(false) {
+                Ok(name) => ui.toast(&format!("'{name}' is live — hit Launch Roblox to play")),
+                Err(e) => ui.toast(&format!("Profile set. Couldn't write Sober's config: {e}")),
+            }
+            dialog.close();
+        });
+    }
+
+    toolbar.set_content(Some(&scrolled(&content)));
+    dialog.set_content(Some(&toolbar));
+    dialog.present();
 }
 
 fn build_profiles_page(ui: &Rc<Ui>) -> gtk::Widget {
@@ -380,16 +568,7 @@ fn build_performance_page(ui: &Rc<Ui>) -> gtk::Widget {
     presets.set_description(Some(
         "Switch the active profile to a preset and write it to Sober.",
     ));
-    for (slug, label, sub) in [
-        (
-            "competitive-fps",
-            "Competitive FPS",
-            "Max frames, minimal effects",
-        ),
-        ("balanced", "Balanced", "Sensible defaults, uncapped FPS"),
-        ("cinematic", "Cinematic", "Highest fidelity"),
-        ("potato", "Potato", "Rescue mode for weak GPUs"),
-    ] {
+    for (slug, label, sub) in PRESETS {
         let row = adw::ActionRow::new();
         row.set_title(label);
         row.set_subtitle(sub);
@@ -551,6 +730,10 @@ impl Ui {
             .set_text(&fflags_to_pretty(&profile.fflags));
         self.env_view.buffer().set_text(&env_to_text(&profile.env));
         self.play_summary.set_subtitle(&describe(&profile));
+        self.play_caption.set_text(&format!(
+            "Applies '{}' to Sober, then starts Roblox",
+            profile.name
+        ));
 
         *self.current.borrow_mut() = profile;
         self.loading.set(false);

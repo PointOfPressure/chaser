@@ -8,12 +8,16 @@
 
 Sober is a great *engine*: it runs the x86-64 Android build of Roblox natively on Linux, sidestepping the Hyperion anti-cheat that killed the Wine path, and it's genuinely fast. But by design it's a **minimal runtime** — VinegarHQ deliberately leaves the launcher/config layer to the community. Chaser is that missing layer, doing for Sober what Bloxstrap does for the Windows client: **switchable profiles, a curated FastFlag catalog, one-click performance presets, launch orchestration, and automatic config backups** — without ever touching the runtime or the Roblox client itself.
 
-![Chaser — Play](docs/play.png)
+| The home screen | First-run onboarding |
+|---|---|
+| ![Chaser — Play](docs/play.png) | ![Onboarding](docs/onboarding.png) |
 
 ---
 
 ## Features
 
+- **One-button launch** — *Launch Roblox* always writes the active profile to Sober first, so what you see is what you play.
+- **First-run onboarding** — checks your Sober install and sets you up with a starting preset in one click, Bloxstrap-style.
 - **Profiles** — named bundles of graphics mode, renderer, GameMode/RPC/HiDPI/gamepad toggles, FastFlags, and launch env. Switch between them in one click.
 - **Built-in presets** — *Competitive FPS*, *Balanced*, *Cinematic*, and *Potato* (rescue mode for weak GPUs), ready to go.
 - **Curated FastFlag catalog** — real, risk-tagged engine flags with plain-English descriptions, plus a raw JSON editor for power users.

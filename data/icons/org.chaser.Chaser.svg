@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9141ac"/>
+      <stop offset="1" stop-color="#613583"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e5dcf1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- badge -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)"/>
+
+  <!-- speed lines trailing the play mark -->
+  <rect x="22" y="47" width="24" height="9" rx="4.5" fill="#ffffff" opacity="0.50"/>
+  <rect x="18" y="63" width="20" height="9" rx="4.5" fill="#ffffff" opacity="0.32"/>
+  <rect x="24" y="79" width="15" height="9" rx="4.5" fill="#ffffff" opacity="0.18"/>
+
+  <!-- play triangle (rounded via stroke join) -->
+  <path d="M 58 45 L 98 66.5 L 58 88 Z"
+        fill="url(#mark)" stroke="url(#mark)"
+        stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,12 +1,12 @@
-# Chaser
+<img src="data/icons/org.chaser.Chaser.svg" align="left" width="64" height="64" alt="Chaser icon">
+
+# Chaser — the Bloxstrap of Linux
 
 [![CI](https://github.com/PointOfPressure/chaser/actions/workflows/ci.yml/badge.svg)](https://github.com/PointOfPressure/chaser/actions/workflows/ci.yml)
 
-**A native GTK4 launcher and manager for [Sober](https://sober.vinegarhq.org/) — the way to play Roblox on Linux.**
+**Windows players get [Bloxstrap](https://github.com/bloxstraplabs/bloxstrap). Linux players get Chaser** — a native GTK4 launcher and manager for [Sober](https://sober.vinegarhq.org/), the way to play Roblox on Linux.
 
-Sober is a great *engine*: it runs the x86-64 Android build of Roblox natively on Linux, sidestepping the Hyperion anti-cheat that killed the Wine path, and it's genuinely fast. But by design it's a **minimal runtime** — VinegarHQ deliberately leaves the launcher/config layer to the community. On Windows, players have Bloxstrap; on Linux there hasn't been an equally polished equivalent.
-
-Chaser is that cockpit. It doesn't replace Sober's runtime (that's a closed, anti-cheat-sensitive black box you shouldn't fight) — it wraps it with the things Sober leaves out: **switchable profiles, a curated FastFlag catalog, one-click performance presets, launch orchestration, and automatic config backups.**
+Sober is a great *engine*: it runs the x86-64 Android build of Roblox natively on Linux, sidestepping the Hyperion anti-cheat that killed the Wine path, and it's genuinely fast. But by design it's a **minimal runtime** — VinegarHQ deliberately leaves the launcher/config layer to the community. Chaser is that missing layer, doing for Sober what Bloxstrap does for the Windows client: **switchable profiles, a curated FastFlag catalog, one-click performance presets, launch orchestration, and automatic config backups** — without ever touching the runtime or the Roblox client itself.
 
 ![Chaser — Play](docs/play.png)
 
@@ -34,7 +34,25 @@ Chaser is that cockpit. It doesn't replace Sober's runtime (that's a closed, ant
 - **GTK4 ≥ 4.14** and **libadwaita ≥ 1.5** (Ubuntu 24.04 / Fedora 40 / anything newer)
 - **Rust** (to build from source)
 
-## Build & install
+## Install
+
+### Flatpak (recommended)
+
+Grab `chaser.flatpak` from the [latest release](https://github.com/PointOfPressure/chaser/releases/latest), then:
+
+```sh
+flatpak install --user ./chaser.flatpak
+flatpak run org.chaser.Chaser        # or launch "Chaser" from your app menu
+```
+
+Or build the Flatpak yourself:
+
+```sh
+flatpak install flathub org.gnome.Sdk//49 org.gnome.Platform//49 org.freedesktop.Sdk.Extension.rust-stable//25.08
+flatpak-builder --user --install --force-clean build-dir packaging/org.chaser.Chaser.yml
+```
+
+### From source (native)
 
 ```sh
 git clone https://github.com/PointOfPressure/chaser.git
@@ -44,17 +62,13 @@ sudo apt install libgtk-4-dev libadwaita-1-dev
 cargo build --release
 ```
 
-Binaries land in `target/release/`:
-
-- `chaser-gui` — the graphical launcher
-- `chaser` — the CLI
-
-Run in place with `./target/release/chaser-gui`, or install properly:
+Binaries land in `target/release/` (`chaser-gui` — the app, `chaser` — the CLI). Run in place with `./target/release/chaser-gui`, or install properly:
 
 ```sh
 sudo install -Dm755 target/release/chaser-gui /usr/local/bin/chaser-gui
 sudo install -Dm755 target/release/chaser /usr/local/bin/chaser
-install -Dm644 data/chaser.desktop ~/.local/share/applications/chaser.desktop
+install -Dm644 data/org.chaser.Chaser.desktop ~/.local/share/applications/org.chaser.Chaser.desktop
+install -Dm644 data/icons/org.chaser.Chaser.svg ~/.local/share/icons/hicolor/scalable/apps/org.chaser.Chaser.svg
 ```
 
 Chaser then shows up in your app menu like any other application.

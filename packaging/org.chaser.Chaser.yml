@@ -1,0 +1,45 @@
+# Flatpak manifest for Chaser.
+#
+# Local/dev build (network allowed during build for cargo):
+#   flatpak-builder --user --install --force-clean build-dir packaging/org.chaser.Chaser.yml
+#
+# For a Flathub submission this manifest needs offline cargo sources
+# (flatpak-cargo-generator) instead of the network build-arg.
+app-id: org.chaser.Chaser
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: chaser-gui
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Escape hatch to run `flatpak run org.vinegarhq.Sober` on the host.
+  - --talk-name=org.freedesktop.Flatpak
+  # Sober's config and logs live in its per-app home.
+  - --filesystem=~/.var/app/org.vinegarhq.Sober
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/chaser/cargo
+  build-args:
+    - --share=network
+
+modules:
+  - name: chaser
+    buildsystem: simple
+    build-commands:
+      - cargo build --release --workspace
+      - install -Dm755 target/release/chaser-gui /app/bin/chaser-gui
+      - install -Dm755 target/release/chaser /app/bin/chaser
+      - install -Dm644 data/org.chaser.Chaser.desktop /app/share/applications/org.chaser.Chaser.desktop
+      - install -Dm644 data/icons/org.chaser.Chaser.svg /app/share/icons/hicolor/scalable/apps/org.chaser.Chaser.svg
+      - install -Dm644 data/org.chaser.Chaser.metainfo.xml /app/share/metainfo/org.chaser.Chaser.metainfo.xml
+    sources:
+      - type: dir
+        path: ..

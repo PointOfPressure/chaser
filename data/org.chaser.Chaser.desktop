@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Chaser
+Comment=The Bloxstrap-style launcher for Sober (Roblox on Linux)
+Exec=chaser-gui
+Icon=org.chaser.Chaser
+Type=Application
+Categories=Game;Settings;
+Keywords=roblox;sober;launcher;fastflags;bloxstrap;
+Terminal=false

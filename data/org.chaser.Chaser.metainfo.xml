@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.chaser.Chaser</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Chaser</name>
+  <summary>Bloxstrap-style launcher for Sober (Roblox on Linux)</summary>
+  <description>
+    <p>
+      Chaser is the missing cockpit for Sober: switchable performance profiles,
+      a curated risk-tagged FastFlag catalog, one-click presets, MangoHud and
+      environment control, and automatic config backups — the launcher layer
+      Windows players know from Bloxstrap, built natively for Linux with GTK4.
+    </p>
+    <p>
+      Chaser never modifies the Roblox client. It edits Sober's own
+      configuration surface, preserves everything it doesn't manage, and backs
+      up before every change.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.chaser.Chaser.desktop</launchable>
+  <url type="homepage">https://github.com/PointOfPressure/chaser</url>
+  <url type="bugtracker">https://github.com/PointOfPressure/chaser/issues</url>
+  <developer id="io.github.pointofpressure">
+    <name>PointOfPressure</name>
+  </developer>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/PointOfPressure/chaser/main/docs/play.png</image>
+      <caption>Play page: Sober status, active profile, one-click launch</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/PointOfPressure/chaser/main/docs/fflags.png</image>
+      <caption>Curated, risk-tagged FastFlag catalog</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-07-07"/>
+  </releases>
+</component>

@@ -16,6 +16,23 @@ use std::process::Command;
 
 pub const APP_ID: &str = "org.vinegarhq.Sober";
 
+/// True when Chaser itself is running inside a Flatpak sandbox (in which case
+/// `flatpak` on the host must be reached via `flatpak-spawn --host`).
+pub fn in_sandbox() -> bool {
+    std::path::Path::new("/.flatpak-info").exists()
+}
+
+/// A `flatpak` command that works both natively and from inside a sandbox.
+fn host_flatpak_command() -> Command {
+    if in_sandbox() {
+        let mut c = Command::new("flatpak-spawn");
+        c.args(["--host", "flatpak"]);
+        c
+    } else {
+        Command::new("flatpak")
+    }
+}
+
 /// Default header written when we have to create a fresh config file.
 const DEFAULT_PREAMBLE: &str = "\
 // !!! STOP !!!
@@ -54,7 +71,7 @@ impl SoberInstall {
 
     /// True if the Sober Flatpak is installed (checked via `flatpak info`).
     pub fn is_installed() -> bool {
-        Command::new("flatpak")
+        host_flatpak_command()
             .args(["info", APP_ID])
             .output()
             .map(|o| o.status.success())
@@ -80,7 +97,7 @@ impl SoberInstall {
 
 /// Parse `flatpak info` output for the `Version:` field.
 fn detect_version() -> Option<String> {
-    let out = Command::new("flatpak")
+    let out = host_flatpak_command()
         .args(["info", APP_ID])
         .output()
         .ok()?;
@@ -265,7 +282,22 @@ impl LaunchSpec {
 /// Roblox deep-link URI. Environment (MangoHud, custom vars) is injected via
 /// `flatpak run --env=` so it reaches the sandboxed app.
 pub fn build_launch(profile: &Profile, uri: Option<&str>) -> LaunchSpec {
-    let mut args: Vec<String> = vec!["run".to_string()];
+    build_launch_for(profile, uri, in_sandbox())
+}
+
+/// Like [`build_launch`], but with the sandbox decision made explicit
+/// (`sandboxed` = Chaser itself runs inside Flatpak and must escape via
+/// `flatpak-spawn --host`). Split out so it is unit-testable.
+pub fn build_launch_for(profile: &Profile, uri: Option<&str>, sandboxed: bool) -> LaunchSpec {
+    let mut args: Vec<String> = Vec::new();
+    let program = if sandboxed {
+        args.push("--host".to_string());
+        args.push("flatpak".to_string());
+        "flatpak-spawn"
+    } else {
+        "flatpak"
+    };
+    args.push("run".to_string());
 
     // Deterministic env ordering: BTreeMap iterates sorted; MangoHud appended last.
     for (k, v) in &profile.env {
@@ -281,7 +313,7 @@ pub fn build_launch(profile: &Profile, uri: Option<&str>) -> LaunchSpec {
     }
 
     LaunchSpec {
-        program: "flatpak".to_string(),
+        program: program.to_string(),
         args,
     }
 }
@@ -528,7 +560,7 @@ mod tests {
         p.mangohud = true;
         p.env
             .insert("__GL_THREADED_OPTIMIZATIONS".into(), "1".into());
-        let spec = build_launch(&p, Some("roblox://experiences/start?placeId=1"));
+        let spec = build_launch_for(&p, Some("roblox://experiences/start?placeId=1"), false);
         assert_eq!(spec.program, "flatpak");
         assert_eq!(spec.args[0], "run");
         assert!(spec.args.iter().any(|a| a == "--env=MANGOHUD=1"));
@@ -544,5 +576,16 @@ mod tests {
         let app_pos = spec.args.iter().position(|a| a == APP_ID).unwrap();
         let uri_pos = spec.args.len() - 1;
         assert!(app_pos < uri_pos);
+    }
+
+    #[test]
+    fn sandboxed_launch_escapes_via_flatpak_spawn() {
+        let p = Profile::new("Any");
+        let spec = build_launch_for(&p, None, true);
+        assert_eq!(spec.program, "flatpak-spawn");
+        assert_eq!(spec.args[0], "--host");
+        assert_eq!(spec.args[1], "flatpak");
+        assert_eq!(spec.args[2], "run");
+        assert_eq!(spec.args.last().unwrap(), APP_ID);
     }
 }

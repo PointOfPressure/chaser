@@ -1,4 +1,4 @@
-//! `chaser` — a small headless front-end over `chaser-core`.
+//! `chaser`, a small headless front-end over `chaser-core`.
 //!
 //! Useful on its own (scriptable) and as the verification vehicle for the core
 //! logic against a real Sober install without needing the GTK GUI.
@@ -69,7 +69,7 @@ fn cmd_status() -> Result<()> {
     println!("Profiles:     {} saved", profiles.len());
     println!(
         "  active:     {}",
-        active.as_deref().unwrap_or("(none — run `chaser init`)")
+        active.as_deref().unwrap_or("(none, run `chaser init`)")
     );
     Ok(())
 }
@@ -82,7 +82,7 @@ fn cmd_config(rest: &[String]) -> Result<()> {
     }
     if !path.exists() {
         bail!(
-            "Sober config not found at {} — launch Sober once to create it",
+            "Sober config not found at {}, launch Sober once to create it",
             path.display()
         );
     }
@@ -182,7 +182,7 @@ fn cmd_launch(rest: &[String]) -> Result<()> {
 }
 
 fn cmd_fflags() -> Result<()> {
-    println!("Curated FastFlag catalog (unsupported by VinegarHQ — use at your own risk):\n");
+    println!("Curated FastFlag catalog (unsupported by VinegarHQ, use at your own risk):\n");
     for f in fflags::catalog() {
         println!(
             "  {:<38} [{:<10} {:<8}] {}",
@@ -214,7 +214,7 @@ fn cmd_init() -> Result<()> {
         println!("Created built-in presets: competitive-fps, balanced, cinematic, potato");
         println!("Active profile set to 'balanced'.");
     } else {
-        println!("Profiles already exist — nothing to do.");
+        println!("Profiles already exist, nothing to do.");
     }
     Ok(())
 }
@@ -237,7 +237,7 @@ fn first_line(s: &str) -> String {
 
 fn print_help() {
     println!(
-        "chaser — manage Sober (Roblox on Linux) profiles and FastFlags\n\n\
+        "chaser, manage Sober (Roblox on Linux) profiles and FastFlags\n\n\
 USAGE:\n  chaser <command> [args]\n\n\
 COMMANDS:\n  \
 status                  Show Sober install + active profile\n  \

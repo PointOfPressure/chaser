@@ -109,7 +109,7 @@ impl Risk {
 }
 
 /// A single curated FastFlag definition (catalog metadata, not a live value).
-/// In-memory only — never serialised — so it can borrow `'static` strings.
+/// In-memory only, never serialised, so it can borrow `'static` strings.
 #[derive(Clone, Debug)]
 pub struct FFlagDef {
     pub name: &'static str,

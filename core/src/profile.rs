@@ -318,7 +318,7 @@ mod tests {
     fn rename_to_same_slug_is_fine() {
         let store = temp_store("samename");
         store.save(&preset_balanced()).unwrap();
-        // Different display name, same slug — allowed.
+        // Different display name, same slug, allowed.
         let renamed = store.rename("balanced", "BALANCED").unwrap();
         assert_eq!(renamed.slug(), "balanced");
         assert_eq!(store.load("balanced").unwrap().name, "BALANCED");

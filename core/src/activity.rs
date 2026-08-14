@@ -1,7 +1,7 @@
 //! Best-effort reading of Sober's session logs for a play-history view.
 //!
 //! Sober writes timestamped logs to `data/sober/sober_logs/` plus a
-//! `latest.log`. We surface them as "sessions"; this is intentionally light —
+//! `latest.log`. We surface them as "sessions"; this is intentionally light -
 //! log formats change and we never depend on their internals.
 
 use anyhow::Result;

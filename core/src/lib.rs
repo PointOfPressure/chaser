@@ -1,11 +1,11 @@
 //! Chaser core: all Sober-facing logic, UI-independent and unit-tested.
 //!
 //! Layers:
-//!   * [`sober`]   — detect Sober, read/write its JSONC config, build launches
-//!   * [`profile`] — saved profiles + built-in presets
-//!   * [`fflags`]  — curated FastFlag catalog
-//!   * [`activity`]— best-effort session history from Sober logs
-//!   * [`models`]  — shared types
+//!   * [`sober`] detect Sober, read/write its JSONC config, build launches
+//!   * [`profile`] saved profiles + built-in presets
+//!   * [`fflags`] curated FastFlag catalog
+//!   * [`activity`] best-effort session history from Sober logs
+//!   * [`models`] shared types
 
 pub mod activity;
 pub mod fflags;

@@ -1,4 +1,4 @@
-//! Chaser — a native GTK4/libadwaita launcher and manager for Sober.
+//! Chaser, a native GTK4/libadwaita launcher and manager for Sober.
 //!
 //! One "active profile" drives everything: the Play page applies & launches it,
 //! and the Profiles / FastFlags / Performance pages edit that same profile.
@@ -154,22 +154,22 @@ const PRESETS: [(&str, &str, &str); 4] = [
     (
         "competitive-fps",
         "Competitive FPS",
-        "Max frames, minimum eye-candy — uncapped FPS, low quality, no MSAA",
+        "Max frames, minimum eye-candy, uncapped FPS, low quality, no MSAA",
     ),
     (
         "balanced",
         "Balanced",
-        "Sensible defaults with an uncapped framerate — a good starting point",
+        "Sensible defaults with an uncapped framerate, a good starting point",
     ),
     (
         "cinematic",
         "Cinematic",
-        "Highest fidelity — quality mode, full effects",
+        "Highest fidelity, quality mode, full effects",
     ),
     (
         "potato",
         "Potato",
-        "Rescue mode for weak GPUs — voxel lighting, lowest textures, no shadows",
+        "Rescue mode for weak GPUs, voxel lighting, lowest textures, no shadows",
     ),
 ];
 
@@ -181,7 +181,7 @@ fn build_play_page(ui: &Rc<Ui>) -> gtk::Widget {
     let page = vbox();
 
     // Only revealed when Sober is missing.
-    let banner = adw::Banner::new("Sober is not installed — Chaser needs it to launch Roblox");
+    let banner = adw::Banner::new("Sober is not installed, Chaser needs it to launch Roblox");
     banner.set_button_label(Some("Copy install command"));
     banner.set_revealed(!SoberInstall::is_installed());
     {
@@ -191,7 +191,7 @@ fn build_play_page(ui: &Rc<Ui>) -> gtk::Widget {
                 display
                     .clipboard()
                     .set_text("flatpak install flathub org.vinegarhq.Sober");
-                ui.toast("Copied — run it in a terminal, then restart Chaser");
+                ui.toast("Copied, run it in a terminal, then restart Chaser");
             }
         });
     }
@@ -257,7 +257,7 @@ fn build_play_page(ui: &Rc<Ui>) -> gtk::Widget {
     {
         let ui = ui.clone();
         launch_btn.connect_clicked(move |_| match ui.apply_current_to_sober(true) {
-            Ok(name) => ui.toast(&format!("Applied '{name}' — launching Roblox")),
+            Ok(name) => ui.toast(&format!("Applied '{name}', launching Roblox")),
             Err(e) => ui.toast(&format!("Error: {e}")),
         });
     }
@@ -307,7 +307,7 @@ fn show_onboarding(parent: &adw::ApplicationWindow, ui: &Rc<Ui>) {
     title.add_css_class("title-1");
     hero.append(&title);
     let blurb = gtk::Label::new(Some(
-        "The Bloxstrap of Linux — profiles, FastFlags and performance presets for Sober.",
+        "The Bloxstrap of Linux, profiles, FastFlags and performance presets for Sober.",
     ));
     blurb.add_css_class("dim-label");
     blurb.set_wrap(true);
@@ -380,7 +380,7 @@ fn show_onboarding(parent: &adw::ApplicationWindow, ui: &Rc<Ui>) {
             ui.refresh_profiles();
             ui.load_active();
             match ui.apply_current_to_sober(false) {
-                Ok(name) => ui.toast(&format!("'{name}' is live — hit Launch Roblox to play")),
+                Ok(name) => ui.toast(&format!("'{name}' is live, hit Launch Roblox to play")),
                 Err(e) => ui.toast(&format!("Profile set. Couldn't write Sober's config: {e}")),
             }
             dialog.close();
@@ -632,10 +632,6 @@ fn build_about_page(ui: &Rc<Ui>) -> gtk::Widget {
     sober.set_title("Sober");
     sober.set_subtitle(&sober_status_text());
     info.add(&sober);
-    let credit = adw::ActionRow::new();
-    credit.set_title("Built with");
-    credit.set_subtitle("Claude (Anthropic)");
-    info.add(&credit);
     page.append(&info);
 
     let backups = adw::PreferencesGroup::new();
@@ -666,7 +662,7 @@ fn build_about_page(ui: &Rc<Ui>) -> gtk::Widget {
     disclaimer.set_title("Disclaimer");
     disclaimer.set_description(Some(
         "Chaser is unofficial and not affiliated with Roblox or VinegarHQ. It only edits Sober's \
-         config and launches it — it never modifies the Roblox client. Use FastFlags at your own risk.",
+         config and launches it, it never modifies the Roblox client. Use FastFlags at your own risk.",
     ));
     page.append(&disclaimer);
 
@@ -932,8 +928,8 @@ fn load_profiles() -> Vec<Profile> {
 }
 
 fn describe(p: &Profile) -> String {
-    let g = p.graphics_mode.map(|m| m.label()).unwrap_or("—");
-    let r = p.renderer.map(|r| r.label()).unwrap_or("—");
+    let g = p.graphics_mode.map(|m| m.label()).unwrap_or("-");
+    let r = p.renderer.map(|r| r.label()).unwrap_or("-");
     format!("{g} · {r} · {} FastFlags", p.fflags.len())
 }
 
@@ -943,7 +939,7 @@ fn sober_status_text() -> String {
             "Installed · version {}",
             s.version.as_deref().unwrap_or("unknown")
         ),
-        Err(_) => "Not installed — run: flatpak install flathub org.vinegarhq.Sober".to_string(),
+        Err(_) => "Not installed, run: flatpak install flathub org.vinegarhq.Sober".to_string(),
     }
 }
 

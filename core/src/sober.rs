@@ -5,7 +5,7 @@
 //!   * strip comments before parsing,
 //!   * preserve the leading comment block verbatim on write,
 //!   * keep the config as an order-preserving object and only touch the keys
-//!     we manage — unknown keys are never dropped.
+//!     we manage, unknown keys are never dropped.
 
 use crate::models::Profile;
 use crate::paths;

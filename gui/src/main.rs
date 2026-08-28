@@ -7,12 +7,14 @@
 use adw::prelude::*;
 use gtk::glib;
 use serde_json::{Map, Value};
+use chaser_core::validate::Verdict;
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use chaser_core::{
-    build_launch, fflags, paths, GraphicsMode, Profile, Renderer, SoberConfig, SoberInstall, Store,
+    build_launch, fflags, paths, validate, GraphicsMode, Profile, Renderer, SoberConfig,
+    SoberInstall, Store,
 };
 
 const APP_ID: &str = "org.chaser.Chaser";
@@ -503,8 +505,9 @@ fn build_fflags_page(ui: &Rc<Ui>) -> gtk::Widget {
     let banner = adw::PreferencesGroup::new();
     banner.set_title("FastFlags");
     banner.set_description(Some(
-        "Unsupported by VinegarHQ and can break games. The catalog below is curated and \
-         conservative; add anything else in the raw editor. Flags apply to the active profile.",
+        "Roblox honours only the flags on its official allowlist; anything else is silently \
+         ignored. Chaser checks every flag against the engine's own symbols and marks each one \
+         LIVE, IGNORED, or NOT REAL. Flags apply to the active profile.",
     ));
     page.append(&banner);
 
@@ -515,7 +518,8 @@ fn build_fflags_page(ui: &Rc<Ui>) -> gtk::Widget {
         let row = adw::ActionRow::new();
         row.set_title(def.name);
         row.set_subtitle(&format!(
-            "[{} · {}] {}",
+            "[{} · {} · {}] {}",
+            validate::verdict(def.name).label().to_uppercase(),
             def.category,
             def.risk.label(),
             def.description
@@ -844,8 +848,12 @@ impl Ui {
         let text = buffer_text(&self.fflags_view);
         match parse_fflags(&text) {
             Ok(map) => {
+                let note = inert_summary(&map);
                 self.mutate(|p| p.fflags = map);
-                self.toast("FastFlags saved");
+                match note {
+                    Some(n) => self.toast(&format!("FastFlags saved - {n}")),
+                    None => self.toast("FastFlags saved"),
+                }
             }
             Err(e) => self.toast(&format!("Invalid JSON: {e}")),
         }
@@ -974,6 +982,26 @@ fn index_to_renderer(i: u32) -> Option<Renderer> {
         1 => Some(Renderer::Vulkan),
         2 => Some(Renderer::OpenGl),
         _ => None,
+    }
+}
+
+/// Short human summary of how many flags in a set will do nothing, for the
+/// toast shown when the raw editor is saved. `None` when everything is live.
+fn inert_summary(map: &serde_json::Map<String, Value>) -> Option<String> {
+    let (mut ignored, mut fake) = (0usize, 0usize);
+    for (name, verdict) in validate::audit(map) {
+        let _ = name;
+        match verdict {
+            Verdict::Live => {}
+            Verdict::Ignored => ignored += 1,
+            Verdict::WrongPrefix { .. } | Verdict::Unknown => fake += 1,
+        }
+    }
+    match (ignored, fake) {
+        (0, 0) => None,
+        (i, 0) => Some(format!("{i} ignored by the client")),
+        (0, f) => Some(format!("{f} not real flags")),
+        (i, f) => Some(format!("{i} ignored, {f} not real")),
     }
 }
 

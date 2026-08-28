@@ -174,71 +174,99 @@ pub fn presets() -> Vec<Profile> {
 
 fn preset_competitive() -> Profile {
     let mut p = Profile::new("Competitive FPS");
-    p.description = "Max frames, minimum eye-candy. Uncapped FPS, low quality, no MSAA.".into();
+    p.description =
+        "Max frames, minimum eye-candy: lowest render level, no MSAA, no grass, flat sky.".into();
     p.graphics_mode = Some(GraphicsMode::Performance);
     p.renderer = Some(Renderer::Vulkan);
     p.enable_gamemode = Some(true);
     p.fflags
-        .insert("DFIntTaskSchedulerTargetFps".into(), json!(240));
-    p.fflags
-        .insert("DFIntDebugFRMQualityLevelOverride".into(), json!(3));
+        .insert("DFIntDebugFRMQualityLevelOverride".into(), json!(1));
     p.fflags
         .insert("FIntDebugForceMSAASamples".into(), json!(0));
-    p.fflags.insert("FFlagDisablePostFx".into(), json!(true));
+    p.fflags.insert("FIntFRMMaxGrassDistance".into(), json!(0));
+    p.fflags.insert("FIntFRMMinGrassDistance".into(), json!(0));
+    p.fflags
+        .insert("DFFlagTextureQualityOverrideEnabled".into(), json!(true));
+    p.fflags.insert("DFIntTextureQualityOverride".into(), json!(0));
+    p.fflags.insert("FFlagDebugSkyGray".into(), json!(true));
     p
 }
 
 fn preset_balanced() -> Profile {
     let mut p = Profile::new("Balanced");
-    p.description = "Sensible defaults with an uncapped framerate. A good starting point.".into();
+    p.description =
+        "Sensible defaults. Pins the render level so it cannot drift, and leaves the rest alone."
+            .into();
     p.graphics_mode = Some(GraphicsMode::Balanced);
     p.renderer = Some(Renderer::Vulkan);
     p.enable_gamemode = Some(true);
     p.fflags
-        .insert("DFIntTaskSchedulerTargetFps".into(), json!(144));
+        .insert("DFIntDebugFRMQualityLevelOverride".into(), json!(10));
     p
 }
 
 fn preset_cinematic() -> Profile {
     let mut p = Profile::new("Cinematic");
-    p.description = "Highest fidelity: quality mode, high render level, full effects.".into();
+    p.description = "Highest fidelity: top render level, best textures, full anti-aliasing.".into();
     p.graphics_mode = Some(GraphicsMode::Quality);
     p.renderer = Some(Renderer::Vulkan);
     p.enable_gamemode = Some(true);
     p.fflags
-        .insert("DFIntTaskSchedulerTargetFps".into(), json!(120));
-    p.fflags
         .insert("DFIntDebugFRMQualityLevelOverride".into(), json!(21));
+    p.fflags
+        .insert("DFFlagTextureQualityOverrideEnabled".into(), json!(true));
+    p.fflags.insert("DFIntTextureQualityOverride".into(), json!(3));
+    p.fflags
+        .insert("FIntDebugForceMSAASamples".into(), json!(4));
     p
 }
 
 fn preset_potato() -> Profile {
     let mut p = Profile::new("Potato");
     p.description =
-        "Rescue mode for very weak GPUs: voxel lighting, lowest textures, no shadows.".into();
+        "Rescue mode for very weak GPUs: lowest everything, no grass, frozen lighting, \
+         aggressive geometry LOD. Lighting stops updating - that is the trade."
+            .into();
     p.graphics_mode = Some(GraphicsMode::Performance);
     p.renderer = Some(Renderer::OpenGl);
     p.enable_gamemode = Some(true);
     p.fflags
-        .insert("DFIntTaskSchedulerTargetFps".into(), json!(60));
-    p.fflags
         .insert("DFIntDebugFRMQualityLevelOverride".into(), json!(1));
     p.fflags
-        .insert("DFFlagDebugRenderForceTechnologyVoxel".into(), json!(true));
-    p.fflags
-        .insert("FIntRenderShadowIntensity".into(), json!(0));
-    p.fflags
         .insert("DFFlagTextureQualityOverrideEnabled".into(), json!(true));
-    p.fflags
-        .insert("DFIntTextureQualityOverride".into(), json!(0));
+    p.fflags.insert("DFIntTextureQualityOverride".into(), json!(0));
     p.fflags
         .insert("FIntDebugForceMSAASamples".into(), json!(0));
+    p.fflags.insert("FIntFRMMaxGrassDistance".into(), json!(0));
+    p.fflags.insert("FIntFRMMinGrassDistance".into(), json!(0));
+    p.fflags.insert("FFlagDebugSkyGray".into(), json!(true));
+    p.fflags
+        .insert("DFFlagDebugPauseVoxelizer".into(), json!(true));
+    p.fflags
+        .insert("DFIntCSGLevelOfDetailSwitchingDistance".into(), json!(50));
     p
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::validate::{verdict, Verdict};
+
+    /// Built-in presets are the flags most users will ever run, so they are
+    /// held to the strictest bar: every one must be allowlisted and live.
+    #[test]
+    fn presets_only_ship_flags_the_client_honours() {
+        for p in presets() {
+            for name in p.fflags.keys() {
+                assert_eq!(
+                    verdict(name),
+                    Verdict::Live,
+                    "preset '{}' sets {name}, which the client will not honour",
+                    p.name
+                );
+            }
+        }
+    }
 
     /// A store rooted in a unique temp dir so tests never touch the real
     /// ~/.config/chaser.
@@ -260,12 +288,15 @@ mod tests {
     }
 
     #[test]
-    fn competitive_uncaps_fps() {
+    fn competitive_drives_quality_to_the_floor() {
         let c = preset_competitive();
+        // The old frame-rate flag is deliberately gone: the client ignores it.
+        assert!(!c.fflags.contains_key("DFIntTaskSchedulerTargetFps"));
         assert_eq!(
-            c.fflags.get("DFIntTaskSchedulerTargetFps"),
-            Some(&json!(240))
+            c.fflags.get("DFIntDebugFRMQualityLevelOverride"),
+            Some(&json!(1))
         );
+        assert_eq!(c.fflags.get("FIntFRMMaxGrassDistance"), Some(&json!(0)));
     }
 
     #[test]
@@ -297,9 +328,7 @@ mod tests {
             Some("ultra-potato")
         );
         // FFlags travelled with the rename.
-        assert!(renamed
-            .fflags
-            .contains_key("DFFlagDebugRenderForceTechnologyVoxel"));
+        assert!(renamed.fflags.contains_key("DFFlagDebugPauseVoxelizer"));
     }
 
     #[test]

@@ -24,8 +24,18 @@ client.
 - First-run onboarding checks the Sober install and sets a starting preset.
 - Profiles: named bundles of graphics mode, renderer, GameMode, RPC, HiDPI and
   gamepad toggles, FastFlags and launch environment.
-- Presets: Competitive FPS, Balanced, Cinematic, and Potato for weak GPUs.
-- FastFlag catalog, risk-tagged, with a raw JSON editor.
+- Presets: Competitive FPS, Balanced, Cinematic, and Potato for weak GPUs -
+  all built only from flags the client actually honours.
+- FastFlag catalog built from Roblox's official allowlist, risk-tagged, with a
+  raw JSON editor.
+- Every flag validated against the engine's own symbols: Chaser tells you which
+  of your flags are live, which the client ignores, and which are not real
+  flags at all. `chaser doctor` audits your live config.
+- Import shared FastFlag presets with the invented flags stripped out.
+- Play history parsed from Sober's logs: place, universe, server instance and
+  how long each visit lasted.
+- Registers as a `roblox://` link handler, so a Play link from the website
+  applies your active profile before handing off to Sober.
 - Performance page: apply a preset, toggle MangoHud, set environment variables.
 - Sober's JSONC `config.json` is parsed with its comment header and unmanaged
   keys preserved, written atomically, and backed up before every change to
@@ -94,7 +104,9 @@ chaser apply <slug>        # write a profile into Sober's config
 chaser launch [--profile <slug>] [--dry-run] [uri]
 chaser config [--path]     # print Sober's parsed config
 chaser fflags              # list the curated FastFlag catalog
-chaser sessions            # recent Sober play sessions
+chaser sessions            # play history: place, universe, server, duration
+chaser doctor              # audit Sober's FastFlags: live, ignored, or fake
+chaser import <file>       # merge a shared FastFlag preset, dropping fakes
 ```
 
 ## How it works
@@ -109,12 +121,79 @@ Chaser does not touch the Roblox client or Sober's runtime. It:
 3. launches Sober with `flatpak run org.vinegarhq.Sober`, injecting environment
    through `--env=`.
 
+Chaser also ships a hidden desktop entry that claims `x-scheme-handler/roblox`,
+so a Play link from the Roblox website can route through Chaser: it applies the
+active profile, then hands the URI to Sober. Sober claims the same scheme, so
+pick whichever you want as the default handler:
+
+```sh
+xdg-mime default org.chaser.Chaser.handler.desktop x-scheme-handler/roblox
+xdg-mime default org.vinegarhq.Sober.desktop x-scheme-handler/roblox   # to undo
+```
+
 ## FastFlags
 
-FastFlags are unsupported by VinegarHQ and can break games. The catalog here is
-conservative and every flag is risk-tagged, but use them at your own risk. The
-most useful one is `DFIntTaskSchedulerTargetFps`; set it high to uncap the
-framerate.
+Since 29 September 2025 the Roblox client honours only the flags on [Roblox's
+published allowlist][allowlist] - eighteen of them. Everything else set through
+a config file is silently ignored: no error, no warning, it simply does nothing.
+
+That is why most FastFlag guides no longer work, and why a good share of the
+flags traded around in presets were never real names to begin with.
+
+Chaser checks every flag against two independent dumps of the Roblox engine's
+own symbols before it reaches Sober, and reports one of four verdicts:
+
+| Verdict | Meaning |
+|---|---|
+| **Live** | Real and allowlisted. The client honours it. |
+| **Ignored** | A real engine flag, but not allowlisted, so the client discards it. |
+| **Wrong prefix** | The name exists, but under a different prefix (`FFlag` vs `DFFlag`). |
+| **Not a real flag** | No such symbol in any Roblox build. Someone invented it. |
+
+`chaser doctor` audits what is actually in your Sober config right now:
+
+```
+$ chaser doctor
+Auditing 9 FastFlags in ~/.var/app/org.vinegarhq.Sober/config/sober/config.json
+
+  FAKE     DFFlagDebugRenderForceTechnologyVoxel  = true   no such flag in any Roblox build
+  LIVE     DFFlagTextureQualityOverrideEnabled    = true
+  LIVE     DFIntDebugFRMQualityLevelOverride      = 1
+  IGNORED  DFIntTaskSchedulerTargetFps            = 60     not on Roblox's allowlist
+  LIVE     DFIntTextureQualityOverride            = 0
+  FAKE     FFlagDisablePostFx                     = true   no such flag in any Roblox build
+
+  4 live, 1 ignored, 4 not real.
+  5 of 9 flags in this config do nothing.
+```
+
+`chaser import preset.json` merges a preset someone sent you, dropping the
+invented flags rather than writing them into your profile. `--all` keeps them.
+
+### Where the ground truth comes from
+
+Two sources, because neither alone is enough:
+
+- **`core/data/flags.txt`** - every flag symbol in an unstripped Roblox Studio
+  build, as `PREFIX:Name`. The only source that knows a flag's prefix, so it is
+  what catches `FFlag`/`DFFlag` mix-ups.
+- **`core/data/player-flags.txt`** - bare flag names from a current Player
+  client offset dump, covering the ~1500 flags newer than that Studio build.
+
+A flag is treated as real if either source knows it. The allowlist overrides
+both: a platform-specific entry missing from a dump is still allowlisted, and
+is never reported as fabricated.
+
+### Why other tools claim thousands of modifiable flags
+
+Because they do not use the config file. Windows tools that advertise ~14,000
+modifiable flags write values straight into the running client's memory using
+dumped offsets, which sidesteps the allowlist entirely. That is a different
+mechanism with different risks, it is Windows-only, and Chaser does not do it.
+Through a config file - the only route Sober offers - the allowlist is the
+whole truth.
+
+[allowlist]: https://devforum.roblox.com/t/allowlist-for-local-client-configuration-via-fast-flags/3966569
 
 ## Not affiliated
 

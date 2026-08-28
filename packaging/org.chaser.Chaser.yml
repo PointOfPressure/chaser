@@ -38,6 +38,7 @@ modules:
       - install -Dm755 target/release/chaser-gui /app/bin/chaser-gui
       - install -Dm755 target/release/chaser /app/bin/chaser
       - install -Dm644 data/org.chaser.Chaser.desktop /app/share/applications/org.chaser.Chaser.desktop
+      - install -Dm644 data/org.chaser.Chaser.handler.desktop /app/share/applications/org.chaser.Chaser.handler.desktop
       - install -Dm644 data/icons/org.chaser.Chaser.svg /app/share/icons/hicolor/scalable/apps/org.chaser.Chaser.svg
       - install -Dm644 data/org.chaser.Chaser.metainfo.xml /app/share/metainfo/org.chaser.Chaser.metainfo.xml
     sources:

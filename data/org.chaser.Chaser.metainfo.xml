@@ -13,6 +13,12 @@
       Windows players know from Bloxstrap, built natively for Linux with GTK4.
     </p>
     <p>
+      Chaser checks every FastFlag against the Roblox engine's own symbols and
+      against Roblox's allowlist, so it can tell you which of your flags are
+      live, which the client silently ignores, and which were never real flags
+      at all.
+    </p>
+    <p>
       Chaser never modifies the Roblox client. It edits Sober's own
       configuration surface, preserves everything it doesn't manage, and backs
       up before every change.
@@ -40,6 +46,11 @@
   </screenshots>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.0" date="2026-08-28">
+      <description>
+        <p>FastFlag validation: every flag is checked against two dumps of the Roblox engine's symbols and against Roblox's official allowlist, and reported as live, ignored, wrong-prefix or not a real flag. New "chaser doctor" audits Sober's live config; "chaser import" merges shared presets and drops invented flags. The catalog and all four presets were rebuilt from the allowlist, removing three flags that never existed. Chaser can now register as a roblox:// link handler.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-07-07">
       <description>
         <p>Bloxstrap-style home screen with a single Launch Roblox button that always applies the active profile, plus first-run onboarding with Sober detection and preset picker.</p>

@@ -1,0 +1,18 @@
+[Desktop Entry]
+# Registers Chaser as a handler for roblox:// links, the way Bloxstrap does on
+# Windows. Sober also claims these schemes; whichever the user picks as default
+# wins. Picking Chaser means a "Play" link from the website applies the active
+# profile first and then hands the URI straight to Sober.
+#
+# Hidden from the app menu: this entry exists to own the URI scheme, not to be
+# launched on its own. The visible entry is org.chaser.Chaser.desktop.
+Name=Chaser (Roblox link handler)
+Comment=Apply the active Chaser profile, then open the link in Sober
+Exec=chaser launch %u
+Icon=org.chaser.Chaser
+Type=Application
+Categories=Game;
+Keywords=roblox;sober;launcher;
+MimeType=x-scheme-handler/roblox;x-scheme-handler/roblox-player;
+Terminal=false
+NoDisplay=true

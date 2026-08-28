@@ -4,6 +4,7 @@
 //!   * [`sober`] detect Sober, read/write its JSONC config, build launches
 //!   * [`profile`] saved profiles + built-in presets
 //!   * [`fflags`] curated FastFlag catalog
+//!   * [`validate`] is a flag real, and will the client honour it
 //!   * [`activity`] best-effort session history from Sober logs
 //!   * [`models`] shared types
 
@@ -12,10 +13,12 @@ pub mod fflags;
 pub mod models;
 pub mod profile;
 pub mod sober;
+pub mod validate;
 
 pub use models::{FFlagDef, FFlagKind, GraphicsMode, Profile, Renderer, Risk};
 pub use profile::Store;
 pub use sober::{build_launch, LaunchSpec, SoberConfig, SoberInstall};
+pub use validate::{audit, verdict, Verdict, ALLOWLIST};
 
 /// Filesystem locations Chaser uses. Directory getters create the directory.
 pub mod paths {

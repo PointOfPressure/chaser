@@ -4,12 +4,28 @@
 //! logic against a real Sober install without needing the GTK GUI.
 
 use anyhow::{anyhow, bail, Context, Result};
+use chaser_core::validate::{self, Verdict};
 use chaser_core::{build_launch, fflags, Profile, SoberConfig, SoberInstall, Store};
 
 fn main() {
+    reset_sigpipe();
     if let Err(e) = run() {
         eprintln!("error: {e:#}");
         std::process::exit(1);
+    }
+}
+
+/// Restore the default SIGPIPE handler.
+///
+/// Rust ignores SIGPIPE at startup, which turns `chaser sessions | head` into a
+/// panic on a broken pipe instead of a quiet exit. Every subcommand prints, so
+/// this belongs at the entry point rather than around individual writes.
+fn reset_sigpipe() {
+    #[cfg(unix)]
+    // SAFETY: `signal` with SIG_DFL is async-signal-safe and this runs before
+    // any threads are spawned.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
     }
 }
 
@@ -27,6 +43,8 @@ fn run() -> Result<()> {
         "launch" => cmd_launch(rest),
         "fflags" => cmd_fflags(),
         "sessions" => cmd_sessions(),
+        "doctor" => cmd_doctor(),
+        "import" => cmd_import(rest),
         "init" => cmd_init(),
         "help" | "--help" | "-h" => {
             print_help();
@@ -185,25 +203,177 @@ fn cmd_fflags() -> Result<()> {
     println!("Curated FastFlag catalog (unsupported by VinegarHQ, use at your own risk):\n");
     for f in fflags::catalog() {
         println!(
-            "  {:<38} [{:<10} {:<8}] {}",
+            "  {:<8} {:<42} [{:<13} {:<8}] {}",
+            validate::verdict(f.name).label().to_uppercase(),
             f.name,
             f.category,
             f.risk.label(),
             first_line(f.description)
         );
     }
+    println!(
+        "\n  LIVE = on Roblox's allowlist. IGNORED = a real flag the client discards.\n  \
+         Only allowlisted flags have any effect via a config file."
+    );
     Ok(())
+}
+
+/// Audit the FastFlags actually sitting in Sober's config right now.
+///
+/// This is the command that pays for the whole `validate` module: it tells you
+/// which of your flags the client honours, which it silently discards, and
+/// which were never real flags to begin with.
+fn cmd_doctor() -> Result<()> {
+    let path = SoberInstall::config_path();
+    let cfg = SoberConfig::load_or_default(&path)?;
+    let flags = cfg.fflags();
+
+    if flags.is_empty() {
+        println!("No FastFlags set in {}", path.display());
+        return Ok(());
+    }
+
+    println!("Auditing {} FastFlags in {}\n", flags.len(), path.display());
+
+    let (mut live, mut ignored, mut broken) = (0, 0, 0);
+    for (name, verdict) in validate::audit(&flags) {
+        let value = flags.get(&name).map(|v| v.to_string()).unwrap_or_default();
+        let (tag, note) = match &verdict {
+            Verdict::Live => {
+                live += 1;
+                ("LIVE", String::new())
+            }
+            Verdict::Ignored => {
+                ignored += 1;
+                ("IGNORED", "not on Roblox's allowlist, so the client discards it".into())
+            }
+            Verdict::WrongPrefix { found } => {
+                broken += 1;
+                ("WRONG", format!("wrong prefix; try {}{}", found[0], strip_prefix(&name)))
+            }
+            Verdict::Unknown => {
+                broken += 1;
+                ("FAKE", "no such flag in any Roblox build".into())
+            }
+        };
+        println!("  {tag:<8} {name:<44} = {value:<8} {note}");
+    }
+
+    println!("\n  {live} live, {ignored} ignored, {broken} not real.");
+    let inert = ignored + broken;
+    if inert > 0 {
+        println!(
+            "  {inert} of {} flags in this config do nothing.",
+            flags.len()
+        );
+    }
+    Ok(())
+}
+
+/// Merge a shared FastFlag blob into the active profile.
+///
+/// Flag presets get traded around as raw JSON and are full of invented names.
+/// Every incoming flag is checked, and anything that is not a real engine
+/// symbol is dropped rather than written into the profile - `--all` keeps them.
+fn cmd_import(rest: &[String]) -> Result<()> {
+    let mut keep_all = false;
+    let mut file: Option<String> = None;
+    for a in rest {
+        match a.as_str() {
+            "--all" => keep_all = true,
+            other if other.starts_with("--") => bail!("unknown flag: {other}"),
+            other => file = Some(other.to_string()),
+        }
+    }
+    let file = file.ok_or_else(|| anyhow!("usage: chaser import <file.json> [--all]"))?;
+
+    let raw = std::fs::read_to_string(&file).with_context(|| format!("reading {file}"))?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&raw).with_context(|| format!("{file} is not valid JSON"))?;
+
+    // Accept either a bare {"FFlagX": true} blob or a whole Chaser profile.
+    let incoming = parsed
+        .get("fflags")
+        .unwrap_or(&parsed)
+        .as_object()
+        .ok_or_else(|| anyhow!("expected a JSON object of flag names to values"))?
+        .clone();
+
+    if incoming.is_empty() {
+        bail!("no flags found in {file}");
+    }
+
+    let store = Store::open()?;
+    let mut profile = store
+        .active()?
+        .ok_or_else(|| anyhow!("no active profile; run `chaser init` first"))?;
+
+    let (mut added, mut dropped) = (0, 0);
+    for (name, value) in incoming {
+        let verdict = validate::verdict(&name);
+        let fabricated = matches!(verdict, Verdict::Unknown | Verdict::WrongPrefix { .. });
+        if fabricated && !keep_all {
+            println!("  dropped  {name:<44} {}", verdict.label());
+            dropped += 1;
+            continue;
+        }
+        println!("  kept     {name:<44} {}", verdict.label());
+        profile.fflags.insert(name, value);
+        added += 1;
+    }
+
+    store.save(&profile)?;
+    println!("\n  {added} flags merged into '{}', {dropped} dropped.", profile.name);
+    if dropped > 0 {
+        println!("  Re-run with --all to keep the dropped ones anyway.");
+    }
+    println!("  Run `chaser apply {}` to write them to Sober.", profile.slug());
+    Ok(())
+}
+
+/// Best-effort strip of a flag's prefix, for "did you mean" suggestions.
+fn strip_prefix(name: &str) -> String {
+    for p in ["DFString", "SFString", "FString", "DFFlag", "SFFlag", "DFInt", "DFLog", "FFlag", "FInt", "FLog"] {
+        if let Some(rest) = name.strip_prefix(p) {
+            return rest.to_string();
+        }
+    }
+    name.to_string()
 }
 
 fn cmd_sessions() -> Result<()> {
     let s = SoberInstall::detect()?;
-    let sessions = chaser_core::activity::sessions(&s.log_dir)?;
-    if sessions.is_empty() {
-        println!("No Sober sessions found in {}", s.log_dir.display());
+    let games = chaser_core::activity::recent_games(&s.log_dir, 20)?;
+    if games.is_empty() {
+        println!("No play sessions found in {}", s.log_dir.display());
         return Ok(());
     }
-    for sess in sessions.iter().take(20) {
-        println!("  {}   {} KiB", sess.label, sess.size_bytes / 1024);
+    println!("Recent play sessions:\n");
+    for g in games {
+        let when = g
+            .joined
+            .map(|t| {
+                t.with_timezone(&chrono::Local)
+                    .format("%Y-%m-%d %H:%M")
+                    .to_string()
+            })
+            .unwrap_or_else(|| "unknown".into());
+        let dur = match g.duration() {
+            Some(d) if d.num_hours() > 0 => format!("{}h{:02}m", d.num_hours(), d.num_minutes() % 60),
+            Some(d) => format!("{}m", d.num_minutes()),
+            None => "in progress".into(),
+        };
+        let universe = g
+            .universe_id
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| "-".into());
+        println!(
+            "  {when}  place {:<16} universe {:<13} {:<12} {}",
+            g.place_id,
+            universe,
+            dur,
+            g.server.as_deref().unwrap_or("")
+        );
     }
     Ok(())
 }
@@ -251,6 +421,9 @@ launch [opts] [uri]     Apply active profile and launch Sober\n    \
 config [--path]         Print Sober's parsed config (or just its path)\n  \
 fflags                  List the curated FastFlag catalog\n  \
 sessions                List recent Sober play sessions\n  \
+doctor                  Check which FastFlags in Sober's config actually work\n  \
+import <file> [--all]   Merge a shared FastFlag JSON into the active profile\n    \
+    --all               Keep fabricated flags too, instead of dropping them\n  \
 help                    Show this help"
     );
 }
